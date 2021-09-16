@@ -12,6 +12,26 @@
 
 using namespace std;
 
+struct TrieNode {
+    string word;
+    unordered_map<char, TrieNode*> children;
+    TrieNode() {
+        this->word = "";
+    }
+};
+
+void insertTrie(TrieNode *root, const string &word) {
+    TrieNode *node = root;
+    for (auto c : word) {
+        if (!node->children.count(c)) {
+            node->children[c] = new TrieNode();
+        }
+        node = node->children[c];
+    }
+    node -> word = word;
+}
+
+
 struct TreeNode {
     int val;
     TreeNode *left;
@@ -51,12 +71,14 @@ public:
     }
 };
 
+
 class Solution {
 private:
     int tree_min;
     bool flag;
     int count_arr;
     vector<vector<int>> paths;
+    int[][] dirs[4][2] = {{0, 1}, {1, 0}, {-1, 0}, {0, -1}};
 public:
     vector<int> restoreArray(vector<vector<int>>& adjacentPairs) {
         
@@ -1289,5 +1311,111 @@ public:
         }
         return ans;
     }
+
+    string findLongestWord(string s, vector<string>& dictionary) {
+        int n = s.size();
+        sort(dictionary.begin(), dictionary.end(), [](const string &a, const string &b) {
+            if (a.size() == b.size()) {
+                return a < b;
+            }
+            return a.size() > b.size();
+        });
+        vector<vector<int>> dp(n + 1, vector<int>(26));
+        for (int i = 0; i < 26; i++) {
+            dp[n][i] = n;
+        }
+        for (int i = n - 1; i >= 0; i--) {
+            for (int j = 0; j < 26; j++) {
+                if (s[i] - 'a' == j) {
+                    dp[i][j] = i;
+                } else {
+                    dp[i][j] = dp[i + 1][j];
+                }
+            }
+        }
+        for (auto &key : dictionary) {
+            int index = 0, i = 0;
+            while (index < n && i < key.size()) {
+                if (dp[index][key[i] - 'a'] == n) {
+                    break;
+                }
+                index = dp[index][key[i] - 'a'] + 1;
+                i++;
+            }
+            if (i == key.size()) {
+                return key;
+            }
+        }
+        return "";
+    }
+
+    int findPeakElement(vector<int>& nums) {
+        int n = nums.size();
+        vector<int> arr(n + 2);
+        arr[0] = INT_MIN; arr[n + 1] = INT_MIN;
+        int left = 1, right = n;
+        for (int i = 1; i <= n; i++) {
+            arr[i] = nums[i - 1];
+        }
+        while (left < right) {
+            int mid = (left + right) / 2;
+            // cout << mid << endl;
+            if (arr[mid] > arr[mid - 1] && arr[mid] > arr[mid + 1]) {
+                return mid - 1;
+            } else if (arr[mid] > arr[mid - 1]) {
+                left = mid + 1;
+            } else if (arr[mid] > arr[mid + 1]) {
+                right = mid - 1;
+            } else {
+                left = mid + 1;
+            }
+        }
+        return left - 1;
+    }
+
+    bool CheckAndTakeWord(const string &word, TrieNode *root, vector<string> &ans) {
+        TrieNode *node = root;
+        for (auto c : word) {
+            if (node->children.count[c]) {
+                node = node->children[c];
+            } else {
+                return false;
+            }
+        }
+        if (!node->word.empty()) {
+            ans.push_back(word);
+            node->word.clear();
+        }
+        return true;
+    }
+    
+    void dfs_trie(vector<vector<char>> &board, int x, int y, string word, TrieNode &root, 
+        vector<string> &ans) {
+        int m = board.size(), m = board[0].size();
+        if (!CheckAndTakeWord(word, &root, ans)) {
+            return;
+        }
+        for (auto dir : dirs) {
+            int xx = x + dir[0];
+            int yy = y + dir[1];
+            if (xx >= 0 && xx < m && yy >= 0 && yy < n) {
+                word.append(board[xx][yy]);
+                dfs_trie(board, xx, yy, word, root, ans);
+                word.pop_back();
+            }
+        }
+    }
+
+    vector<string> findWords(vector<vector<char>>& board, vector<string>& words) {
+        TrieNode root;
+        for (auto &word : words) {
+            insertTrie(&root, word);
+        }
+        vector<string> ans;
+        dfs_trie(board, 0, 0, "", root, ans);
+        return ans;
+    }
 };
+
+
 
