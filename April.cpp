@@ -41,6 +41,14 @@ struct TreeNode {
     TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {}
 };
 
+struct ListNode {
+    int val;
+    ListNode *next;
+    ListNode() : val(0), next(nullptr) {}
+    ListNode(int x) : val(x), next(nullptr) {}
+    ListNode(int x, ListNode *next) : val(x), next(next) {}
+}
+
 class RandomChoice{
 public:
     vector<int> sum;
@@ -1373,47 +1381,135 @@ public:
         return left - 1;
     }
 
-    bool CheckAndTakeWord(const string &word, TrieNode *root, vector<string> &ans) {
-        TrieNode *node = root;
-        for (auto c : word) {
-            if (node->children.count[c]) {
-                node = node->children[c];
-            } else {
-                return false;
-            }
-        }
-        if (!node->word.empty()) {
-            ans.push_back(word);
-            node->word.clear();
-        }
-        return true;
-    }
-    
-    void dfs_trie(vector<vector<char>> &board, int x, int y, string word, TrieNode &root, 
+    void dfs_trie(vector<vector<char>> &board, int x, int y, TrieNode *root, 
         vector<string> &ans) {
-        int m = board.size(), m = board[0].size();
-        if (!CheckAndTakeWord(word, &root, ans)) {
+        TrieNode *node = root;
+        int m = board.size(), n = board[0].size();
+        if (!node->children.count(board[x][y])) {
             return;
+        } else {
+            node = node->children[board[x][y]];
+        }
+        char prev = board[x][y];
+        board[x][y] = '#';
+        if (!node->word.empty()) {
+            ans.push_back(node->word);
+            node->word.clear();
         }
         for (auto dir : dirs) {
             int xx = x + dir[0];
             int yy = y + dir[1];
-            if (xx >= 0 && xx < m && yy >= 0 && yy < n) {
-                word.append(board[xx][yy]);
-                dfs_trie(board, xx, yy, word, root, ans);
-                word.pop_back();
+            if (xx >= 0 && xx < m && yy >= 0 && yy < n && board[xx][yy] != '#') {
+                dfs_trie(board, xx, yy, node, ans);
             }
         }
+        board[x][y] = prev;
     }
 
     vector<string> findWords(vector<vector<char>>& board, vector<string>& words) {
         TrieNode root;
         for (auto &word : words) {
+            // cout << (&root) << endl;
             insertTrie(&root, word);
         }
         vector<string> ans;
-        dfs_trie(board, 0, 0, "", root, ans);
+        // cout << CheckAndTakeWord("oath", &root, ans) << endl;
+        int m = board.size(), n = board[0].size();
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                dfs_trie(board, i, j, &root, ans);
+            }
+        }
         return ans;
+    }
+
+    bool canWinNim(int n) {
+        return n % 4 != 0;
+    }
+
+    int minSteps(int n) {
+        vector<int> dp(n + 1);
+        dp[1] = 0;
+        for (int i = 2; i <= n; i++) {
+            dp[i] = i;
+        }
+        for (int i = 2; i <= n; i++) {
+            for (int j = 1; j < i; j++) {
+                if (i % j == 0) {
+                    int times = i / j;
+                    dp[i] = min(dp[i], dp[j] + times);
+                }
+            }
+        }
+        return dp[n];
+    }
+
+    int lengthOfLastWord(string s) {
+        int n = s.size();
+        int i = n - 1;
+        while (i >= 0) {
+            if (s[i] == ' ') {
+                i--;
+                continue;
+            }
+            // 不为空格
+            int end = i;
+            while (i >= 0 && s[i] != ' ') {
+                i--;
+            }
+            return end - i;
+        }
+        return 0;
+    }
+
+    vector<ListNode*> splitListToParts(ListNode* head, int k) {
+        ListNode *temp = head;
+        int all = 0;
+        while (temp != nullptr) {
+            all++;
+            temp = temp->next;
+        }
+        vector<ListNode *> answer;
+        int num = all / k, mod = all % k;
+        temp = head;
+        ListNode *listhead = head;
+        int cnt = 0;
+        while (temp != nullptr) {
+            cnt++;
+            // 达到均分的最低限
+            if (mod != 0) {
+                if (cnt == num + 1) {
+                    mod--;
+                    ListNode *prev = temp;
+                    temp = temp->next;
+                    prev->next = nullptr;
+                    answer.push_back(listhead);
+                    listhead = temp;
+                    cnt = 0;
+                    continue;
+                }
+            } else {
+                if (cnt == num) {
+                    ListNode *prev = temp;
+                    temp = temp->next;
+                    prev->next = nullptr;
+                    answer.push_back(listhead);
+                    listhead = temp;
+                    cnt = 0;
+                    continue;
+                }
+            }
+            temp = temp->next;
+        }
+        while (answer.size() != k) {
+            if (temp == nullptr) {
+                answer.push_back(nullptr);
+            } else {
+                answer.push_back(temp);
+                temp = temp->next;
+            }
+        }
+        return answer;
     }
 };
 
