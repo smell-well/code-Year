@@ -47,7 +47,7 @@ struct ListNode {
     ListNode() : val(0), next(nullptr) {}
     ListNode(int x) : val(x), next(nullptr) {}
     ListNode(int x, ListNode *next) : val(x), next(next) {}
-}
+};
 
 class RandomChoice{
 public:
@@ -79,6 +79,61 @@ public:
     }
 };
 
+class SummaryRanges {
+private:
+    map<int, int> intervals;
+
+public:
+    SummaryRanges() {}
+    
+    void addNum(int val) {
+        // 找到 l1 最小的且满足 l1 > val 的区间 interval1 = [l1, r1]
+        // 如果不存在这样的区间，interval1 为尾迭代器
+        auto interval1 = intervals.upper_bound(val);
+        // 找到 l0 最大的且满足 l0 <= val 的区间 interval0 = [l0, r0]
+        // 在有序集合中，interval0 就是 interval1 的前一个区间
+        // 如果不存在这样的区间，interval0 为尾迭代器
+        auto interval0 = (interval1 == intervals.begin() ? intervals.end() : prev(interval1));
+
+        if (interval0 != intervals.end() && interval0->first <= val && val <= interval0->second) {
+            // 情况一
+            return;
+        }
+        else {
+            bool left_aside = (interval0 != intervals.end() && interval0->second + 1 == val);
+            bool right_aside = (interval1 != intervals.end() && interval1->first - 1 == val);
+            if (left_aside && right_aside) {
+                // 情况四
+                int left = interval0->first, right = interval1->second;
+                intervals.erase(interval0);
+                intervals.erase(interval1);
+                intervals.emplace(left, right);
+            }
+            else if (left_aside) {
+                // 情况二
+                ++interval0->second;
+            }
+            else if (right_aside) {
+                // 情况三
+                int right = interval1->second;
+                intervals.erase(interval1);
+                intervals.emplace(val, right);
+            }
+            else {
+                // 情况五
+                intervals.emplace(val, val);
+            }
+        }
+    }
+    
+    vector<vector<int>> getIntervals() {
+        vector<vector<int>> ans;
+        for (const auto& [left, right]: intervals) {
+            ans.push_back({left, right});
+        }
+        return ans;
+    }
+};
 
 class Solution {
 private:
@@ -87,27 +142,11 @@ private:
     int count_arr;
     vector<vector<int>> paths;
     int[][] dirs[4][2] = {{0, 1}, {1, 0}, {-1, 0}, {0, -1}};
+    int cnt_way;
+    vector<string> answer;
+    unordered_map<string, int> map;
+    int cash;
 public:
-    vector<int> restoreArray(vector<vector<int>>& adjacentPairs) {
-        
-    }
-
-    int minOperations(vector<int>& target, vector<int>& arr) {
-
-    }
-
-    vector<int> distanceK(TreeNode* root, TreeNode* target, int k) {
-        
-    }
-
-    vector<int> eventualSafeNodes(vector<vector<int>>& graph) {
-
-    }
-
-    int minSpaceWastedKResizing(vector<int>& nums, int k) {
-
-    }
-
     int shortestPathLength(vector<vector<int>>& graph) {
         int n = graph.size();
         queue<tuple<int, int, int>> q;
@@ -595,10 +634,6 @@ public:
         }
         return dp[0][n - 1];
     }
-    
-    int countDigitOne(int n) {
-        
-    }
 
     int unhappyFriends(int n, vector<vector<int>>& preferences, vector<vector<int>>& pairs) {
         vector<bool> visited(n);
@@ -893,10 +928,6 @@ public:
             ans -= 2 * mmin;
         }
         return ans;
-    }
-
-    int countPaths(int n, vector<vector<int>>& roads) {
-        
     }
 
     int manhattanDistance(vector<int>& point1, vector<int>& point2) {
@@ -1511,6 +1542,577 @@ public:
         }
         return answer;
     }
+
+    bool isPowerOfThree(int n) {
+        while (n > 1) {
+            if (n % 3 != 0) {
+                return false;
+            }
+            n /= 3;
+        }
+        return n == 1;
+    }
+
+    int minDistance(string word1, string word2) {
+        int n = word1.size(), m = word2.size();
+        vector<vector<int>> dp(n + 1, vector<int>(m + 1));
+        if (n == 0 || m == 0) {
+            return abs(n - m);
+        }
+        for (int i = 1; i <= n; i++) {
+            for (int j = 1; j <= m; j++) {
+                if (word1[i - 1] == word2[j - 1]) {
+                    dp[i][j] = dp[i - 1][j - 1] + 1;
+                } else {
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1]);
+                }
+            }
+        }
+        // cout << dp[n - 1][m - 1] <<endl;
+        int ans = n + m - 2 * dp[n][m];
+        return ans;
+    }
+
+    int getSum(int a, int b) {
+        int ans = 0;
+        int carry = 0;
+        for (int i = 0; i < 32; i++) {
+            int a_base = (a >> i) & 1, b_base = (b >> i) & 1;
+            // cout << (a_base ^ b_base) << " " << carry << endl;
+            // 两个位不相同 01
+            if ((a_base ^ b_base)) {
+                if (carry == 0) {
+                    ans |= 1 << i;
+                }
+            } else { // 两个位相同 00 11
+                if (a_base) {
+                    if (carry != 0) {
+                        ans |= 1 << i;
+                    } else {
+                        carry = 1;
+                    }
+                } else {
+                    if (carry != 0) {
+                        ans |= 1 << i;
+                        carry = 0;
+                    }
+                }
+            }
+        }
+        return ans;
+    }
+
+    int numDecodings(string s) {
+        int n = s.size();
+        int mod = 1e9 + 7;
+        vector<long long> dp(n + 1);
+        dp[0] = 1;
+        for (int i = 1; i <= n; i++) {
+            // 单独一位无论如何都可以表示一个字母(除零外)
+            if (s[i - 1] == '*') {
+                dp[i] = ((9 * dp[i - 1]) % mod + dp[i]) % mod;
+            } else if (s[i - 1] != '0') {
+                dp[i] = (dp[i - 1] + dp[i]) % mod;
+            }
+            // 两个字母要满足小于等于26的条件
+            if (i > 1 && ((s[i - 2] >= '1' && s[i - 2] <= '2') || s[i - 2] == '*')) {
+                if (s[i - 2] == '*') {
+                    // * = 1
+                    if (s[i - 1] == '*') {
+                        dp[i] =  ((9 * dp[i - 2]) % mod + dp[i]) % mod;
+                    } else {
+                        dp[i] = (dp[i - 2] + dp[i]) % mod;
+                    }
+                    // * = 2;
+                    if (s[i - 1] <= '6' && s[i - 1] >= '0') {
+                        dp[i] = (dp[i - 2] + dp[i]) % mod;
+                    } else if (s[i - 1] == '*') {
+                        dp[i] = ((6 * dp[i - 2]) % mod + dp[i]) % mod;
+                    }
+                } else {
+                    if (s[i - 2] == '2') {
+                        if (s[i - 1] <= '6' && s[i - 1] >= '0') {
+                            dp[i] = (dp[i - 2] + dp[i]) % mod;
+                        }
+                        if (s[i - 1] == '*') {
+                            dp[i] = ((6 * dp[i - 2]) % mod + dp[i]) % mod;
+                        }
+                    } else {
+                        dp[i] = (dp[i - 2] + dp[i]) % mod;
+                        if (s[i - 1] == '*') {
+                            dp[i] = ((8 * dp[i - 2]) % mod + dp[i]) % mod;
+                        }
+                    }  
+                }
+                
+            }
+        }
+        return dp[n];
+    }
+
+    void dfs_way(stack<int> &sum, TreeNode *root, int target) {
+        if (root == nullptr) {
+            return;
+        }
+        sum.push(root->val);
+        stack<int> temp = sum;
+        long long total = 0;
+        int n = temp.size();
+        for (int i = 0; i < n; i++) {
+            total += temp.top();
+            if (total == target) {
+                // cout << root->val << endl;
+                cnt_way++;
+            }
+            temp.pop();
+        }
+        dfs_way(sum, root->left, target);
+        dfs_way(sum, root->right, target);
+        sum.pop();
+    }
+
+    int pathSum(TreeNode* root, int targetSum) {
+        cnt_way = 0;
+        stack<int> stk;
+        dfs_way(stk, root, targetSum);
+        return cnt_way;
+    }
+
+    int findMinMoves(vector<int>& machines) {
+        int n = machines.size();
+        int sum = 0;
+        for (auto &num : machines) {
+            sum += num;
+        }
+        if (sum % n != 0) {
+            return -1;
+        }
+        int avg = sum / n;
+        int ans = 0, total = 0;
+        for (auto num : machines) {
+            num -= avg;
+            // 把左边看成一个整体
+            total += num;
+            ans = max(ans, max(abs(num), total));
+        }
+        return ans;
+    }
+
+    int computeArea(int ax1, int ay1, int ax2, int ay2, int bx1, int by1, int bx2, int by2) {
+        int s1 = (ax2 - ax1) * (ay2 - ay1);
+        int s2 = (bx2 - bx1) * (by2 - by1);
+        int L = min(ax2, bx2) - max(ax1, bx1);
+        int W = min(by2, ay2) - max(ay1, by1);
+        if (L > 0 && W > 0 ) {
+            // 防止不重叠的时候
+            return s1 + s2 - L * W;
+        }
+        return s1 + s2;
+    }
+
+    string toHex(int num) {
+        auto trans = [](int a) {
+            if (a < 10) {
+                return '0' + a;
+            } else {
+                return 'a' + a - 10;
+            }
+        };
+        int mask = 15;
+        string ans = "";
+        if (num == 0) {
+            return "0";
+        }
+        for (int i = 0; i <= 28; i += 4) {
+            int dig = (num >> i) & mask;
+            cout << dig << endl;
+            ans.push_back(trans(dig));
+        }
+        // 排除前导零
+        while (ans[ans.size() - 1] == '0') {
+            ans.pop_back();
+        }
+        reverse(ans.begin(), ans.end());
+        return ans;
+    }
+
+    int peakIndexInMountainArray(vector<int>& arr) {
+        int n = arr.size();
+        int left = 0, right = n - 1;
+        while (left < right) {
+            int mid = (left + right) / 2;
+            if (arr[mid] > arr[mid + 1]) {
+                right = mid;
+            } else {
+                left = mid + 1;
+            }
+        }
+        return left;
+    }
+
+    bool searchMatrix(vector<vector<int>>& matrix, int target) {
+        for (auto &row : matrix) {
+            for (auto &num : row) {
+                if (target == num) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    vector<int> nextGreaterElement(vector<int>& nums1, vector<int>& nums2) {
+        int n = nums1.size(), m = nums2.size();
+        stack<int> stk;
+        unordered_map<int, int> map;
+        for (int i = 0; i < m; i++) {
+            while (!stk.empty() && stk.top() < nums2[i]) {
+                map[stk.top()] = nums2[i];
+                stk.pop();
+            }
+            stk.push(nums2[i]);
+        }
+        while (!stk.empty()) {
+            map[stk.top()] = -1;
+            stk.pop();
+        }
+        for (int i = 0; i < n; i++) {
+            nums1[i] = map[nums1[i]];
+        }
+        return nums1;
+    }
+
+    void dfs_str(string s, stack<char> &stk, string ans, int index, int cnt) {
+        int n = s.size();
+        // cout << ans << endl;
+        if (cnt > n - index) {
+            return;
+        }
+        for (int i = index + 1; i < n; i++) {
+            if (s[i] != '(' && s[i] != ')') {
+                ans.push_back(s[i]);
+            } else {
+                // 先确定这个括号删不删除
+                // 删除
+                if (cnt > 0) {
+                    stack<char> next = stk;
+                    dfs_str(s, next, ans, i, cnt - 1);
+                }
+                // 不删除
+                if (stk.empty()) {
+                    stk.push(s[i]);
+                } else {
+                    if (stk.top() == ')') {
+                        break;
+                    } else {
+                        if (s[i] == ')') {
+                            stk.pop();
+                        } else {
+                            stk.push(s[i]);
+                        }
+                    }
+                }
+                ans.push_back(s[i]);
+                // dfs_str(s, stk, ans, i, cnt);
+            }
+        }
+        if (cnt == 0 && stk.empty()) {
+            if (map.find(ans) == map.end()) {
+                map[ans] = 1;
+                answer.push_back(ans);
+            }
+            return;
+        }
+    }
+    
+    vector<string> removeInvalidParentheses(string s) {
+        stack<char> stk;
+        for (auto &ch : s) {
+            if (ch != '(' && ch != ')') {
+                continue;
+            } else {
+                if (stk.empty()) {
+                    stk.push(ch);
+                } else {
+                    if (stk.top() == '(' && ch == ')') {
+                        stk.pop();
+                    } else {
+                        stk.push(ch);
+                    }
+                }
+            }
+        }
+        int n = stk.size();
+        stack<char> sk;
+        answer = vector<string>();
+        map = unordered_map<string, int>();
+        string temp = "";
+        dfs_str(s, sk, temp, -1, n);
+        return answer;
+    }
+
+    bool reorderedPowerOf2(int n) {
+        unordered_map<int, vector<int>> map;
+        int base = 1;
+        while (base <= 1e9) {
+            vector<int> count(10);
+            int temp = base;
+            while (temp != 0) {
+                count[temp % 10]++;
+                temp /= 10;
+            }
+            map[base] = count;
+            base *= 2;
+        }
+        vector<int> target(10);
+        while (n != 0) {
+            target[n % 10]++;
+            n /= 10;
+        }
+        // cout << target[1] << endl;
+        for (auto &[key, value] : map) {
+            bool flag = true;
+            for (int i = 0; i < 10; i++) {
+                if (value[i] != target[i]) {
+                    flag = false;
+                    break;
+                }
+            }
+            if (flag) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    vector<string> findWords(vector<string>& words) {
+        vector<unordered_set<char>> map(3);
+        vector<string> str(3);
+        str[0] = "qwertyuiop";
+        str[1] = "asdfghjkl";
+        str[2] = "zxcvbnm";
+        for (int i = 0; i < 3; i++) {
+            for (auto &ch : str[i]) {
+                map[i].insert(ch);
+            }
+        }
+        vector<string> ans;
+        for (auto &word : words) {
+            for (int i = 0; i < 3; i++) {
+                bool flag = true;
+                for (auto ch : word) {
+                    if (ch >= 'A' && ch <= 'Z') {
+                        ch += 'a' - 'A';
+                    }
+                    if (map[i].count(ch) == 0) {
+                        flag = false;
+                        break;
+                    }
+                }
+                if (flag) {
+                    ans.push_back(word);
+                    continue;
+                }
+            }
+        }
+        return ans;
+    }
+
+    int distributeCandies(vector<int>& candyType) {
+        int n = candyType.size();
+        unordered_map<int, int> map;
+        for (auto &candy : candyType) {
+            map[candy]++;
+        }
+        if (map.size() >= n / 2) {
+            return n / 2;
+        } else {
+            return map.size();
+        }
+    }
+
+    void deleteNode(ListNode* node) {
+        node->val = node->next->val;
+        ListNode *child = node->next;
+        node->next = child->next;
+    }
+
+    int longestSubsequence(vector<int>& arr, int difference) {
+        int n = arr.size();
+        int ans = 0;
+        unordered_map<int, int> map;
+        for (int i = 0; i < n; i++) {
+            int temp = arr[i] - difference;
+            if (map.find(temp) == map.end()) {
+                map[arr[i]] = 1;
+            } else {
+                map[arr[i]] = map[temp] + 1;
+            }
+            ans = max(ans, map[arr[i]]);
+        }
+        return ans;
+    }
+
+    int missingNumber(vector<int>& nums) {
+        int n = nums.size();
+        vector<bool> arr(n + 1);
+        for (int i = 0; i < n; i++) {
+            arr[nums[i]] = true;
+        }
+        for (int i = 0; i <= n; i++) {
+            if (!arr[i]) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    string getHint(string secret, string guess) {
+        unordered_map<char, int> sec, gue;
+        int n = secret.size();
+        int cnt = 0;
+        for (int i = 0; i < n; i++) {
+            if (secret[i] == guess[i]) {
+                cnt++;
+            } else {
+                sec[secret[i]]++;
+                gue[guess[i]]++;
+            }
+        }
+        int all = 0;
+        for (auto &[key, value] : gue) {
+            all += min(value, sec[key]);
+        }
+        string ans;
+        ans.push_back('0' + cnt);
+        ans.push_back('A');
+        ans.push_back('0' + all);
+        ans.push_back('B');
+        return ans;
+    }
+
+    vector<int> addNegabinary(vector<int>& arr1, vector<int>& arr2) {
+        reverse(arr1.begin(), arr1.end());
+        reverse(arr2.begin(), arr2.end());
+        int n = arr1.size(), m = arr2.size();
+        int carry = 0;
+        vector<int> ans;
+        for (int i = 0; i < min(m, n); i++) {
+            int temp = arr1[i] + arr2[i] + carry;
+            if (temp >= 2) {
+                temp -= 2;
+                carry = -1;
+            } else if (temp == -1) {
+                temp = 1;
+                carry = 1;
+            } else {
+                carry = 0;
+            }
+            ans.push_back(temp);
+        }
+        if (m < n) {
+            for (int i = m; i < n; i++) {
+                int temp = arr1[i] + carry;
+                if (temp >= 2) {
+                    temp -= 2;
+                    carry = -1;
+                } else if (temp == -1) {
+                    temp = 1;
+                    carry = 1;
+                } else {
+                    carry = 0;
+                }
+                ans.push_back(temp);
+            }
+        } else {
+            for (int i = n; i < m; i++) {
+                int temp = arr2[i] + carry;
+                if (temp >= 2) {
+                    temp -= 2;
+                    carry = -1;
+                } else if (temp == -1) {
+                    temp = 1;
+                    carry = 1;
+                } else {
+                    carry = 0;
+                }
+                ans.push_back(temp);
+            }
+        }
+        if (carry == -1) {
+            ans.push_back(1);
+            ans.push_back(1);
+        } else if (carry == 1) {
+            ans.push_back(1);
+        }
+        // 去除前导零
+        while (ans.size() > 1 && ans[ans.size() - 1] == 0) {
+            ans.pop_back();
+        }
+        reverse(ans.begin(), ans.end());
+        return ans;
+    }
+
+    int findPoisonedDuration(vector<int>& timeSeries, int duration) {
+        int total = 0;
+        int n = timeSeries.size();
+        int start = timeSeries[0];
+        for (int i = 1; i < n; i++) {
+            if (timeSeries[i] >= start + duration) {
+                total += duration;
+            } else {
+                total += timeSeries[i] - start;
+            }
+            start = timeSeries[i];
+        }
+        total += duration;
+        return total;
+    }
+
+    int kInversePairs(int n, int k) {
+        int MOD = 1e9 + 7;
+        vector<vector<int>> dp(n + 1, vector<int>(1001));
+        dp[0][0] = 1;
+        for (int i = 1; i <= n; i++) {
+            for (int j = 0; j <= k; j++) {
+                dp[i][j] = (j - 1 >= 0 ? dp[i][j - 1] : 0) - (j - i >= 0 ? dp[i - 1][j - i] : 0) + dp[i - 1][j];
+                if (dp[i][j] > MOD) {
+                    dp[i][j] -= MOD;
+                } else if (dp[i][j] < 0) {
+                    dp[i][j] += MOD;
+                }
+            }
+        }
+        return dp[n][k];
+    }
+
+    int getMoneyAmount(int n) {
+        vector<vector<int>> dp(n + 1, vector<int>(n + 1, 0));
+        for (int i = n; i > 0; i--) {
+            for (int j = i + 1; j <= n; j++) {
+                int temp = INT_MAX;
+                for (int k = i; k < j; k++) {
+                    temp = min(k + max(dp[i][k - 1], dp[k + 1][j]), temp);
+                }
+                dp[i][j] = temp;
+            }
+        }
+        return dp[1][n];
+    }
+
+    bool detectCapitalUse(string word) {
+        int pis = -1, upper = 0;
+        int n = word.size();
+        for (int i = 0; i < n; i++) {
+            if (word >= 'A' && word <= 'Z') {
+                pis = i;
+                upper++;
+            }
+        }
+        return (upper == n || pis == 0 || upper == 0);
+    }
+
+
 };
 
 
